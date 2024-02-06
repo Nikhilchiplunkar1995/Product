@@ -54,40 +54,36 @@ class Cart {
   add(item) {
     this.items.push(item);
   }
-  calculateTotal(a,b,c,d){
-    console.log("A ",a, "B ",b,"C ",c, "D ",d);
-    let aDisc=0, bDisc=0,totalDisc=0;
-    let total=(a*30+b*20+c*50+d*15)
-    if(a>=3){
-        aDisc=Math.floor(a/3)*15
+  calculateTotal(a, b, c, d) {
+    let aDisc = 0, bDisc = 0, totalDisc = 0;
+    let total = (a * 30 + b * 20 + c * 50 + d * 15)
+    if (a >= 3) {
+      aDisc = Math.floor(a / 3) * 15
     }
-    if(b>=2){
-    bDisc=Math.floor(b/2)*5
+    if (b >= 2) {
+      bDisc = Math.floor(b / 2) * 5
     }
-    total=total -aDisc-bDisc
-    totalDisc=aDisc+bDisc
-    if(total>150){
-        totalDisc+=20
-        total=total-20
+    total = total - aDisc - bDisc
+    totalDisc = aDisc + bDisc
+    if (total > 150) {
+      totalDisc += 20
+      total = total - 20
     }
-    return {aDisc,bDisc,totalDisc,total}
-    
+    return { aDisc, bDisc, totalDisc, total }
+
   }
 }
 
-
-
-const cart = new Cart();
-
+let cart = new Cart();
 app.post('/add-to-cart', async (req, res) => {
   try {
-    const { item_id, quantity } = req.body;
-    const product = await Product.find(item_id);
+    let { item_id, quantity } = req.body;
+    let product = await Product.find(item_id);
     if (!product) {
       return res.status(404).json({ error: 'Product not found' });
     }
 
-    const cartItem = new CartItem(product, quantity);
+    let cartItem = new CartItem(product, quantity);
     cart.add(cartItem);
 
     res.json({ message: 'Item added to cart successfully' });
@@ -110,29 +106,29 @@ app.get('/view-cart', (req, res) => {
       }
     }
 
-let keys = ['A', 'B', 'C', 'D'];
-let result = {};
-keys.forEach(key => {
-  result[key] = duplicate.hasOwnProperty(key) ? duplicate[key] : 0;
-});
+    let keys = ['A', 'B', 'C', 'D'];
+    let result = {};
+    keys.forEach(key => {
+      result[key] = duplicate.hasOwnProperty(key) ? duplicate[key] : 0;
+    });
 
-let finalResult = cart.calculateTotal(result.A, result.B, result.C, result.D);
-let totalPriceAndQuantity = {};
-cart.items.forEach(item => {
-  if (!totalPriceAndQuantity[item.id]) {
-    totalPriceAndQuantity[item.id] = {
-      id: item.id,
-      name: item.name,
-      price: 0,
-      quantity: 0
-    };
-  }
+    let finalResult = cart.calculateTotal(result.A, result.B, result.C, result.D);
+    let totalPriceAndQuantity = {};
+    cart.items.forEach(item => {
+      if (!totalPriceAndQuantity[item.id]) {
+        totalPriceAndQuantity[item.id] = {
+          id: item.id,
+          name: item.name,
+          price: 0,
+          quantity: 0
+        };
+      }
 
-  totalPriceAndQuantity[item.id].price += item.price;
-  totalPriceAndQuantity[item.id].quantity += item.quantity;
-});
+      totalPriceAndQuantity[item.id].price += item.price;
+      totalPriceAndQuantity[item.id].quantity += item.quantity;
+    });
 
-let finalObj = Object.values(totalPriceAndQuantity);
+    let finalObj = Object.values(totalPriceAndQuantity);
     res.json({
       cart: finalObj,
       totalPrice: finalResult.total,
