@@ -8,8 +8,6 @@ function ProductList({ addToCart }) {
     axios.get('http://localhost:3001/products')
       .then(response =>{
         setProducts(response.data.products)
-      console.log("response product ===> ",response);
-
       })
       .catch(error => console.error('Error fetching products:', error));
   }, []);

@@ -18,20 +18,7 @@ const db = mysql.createPool({
 
 class Product {
   static async find(id) {
-    // const [rows] = await db.query('SELECT * FROM products WHERE id = ?', [id]);
-    let rows;
-    if(id == 'A'){
-      rows= [{id : 'A', name :'Product A', price: 30}]
-    }
-    if(id == 'B'){
-      rows= [{id : 'B', name :'Product B', price: 20}]
-    }
-    if(id == 'C'){
-      rows= [{id : 'C', name :'Product C', price: 50}]
-    } 
-    if(id == 'D'){
-      rows= [{id : 'D', name :'Product D', price: 15}]
-    }
+    let rows = await db.query('SELECT * FROM products WHERE id = ?', [id]);
     return rows[0];
   }
 }
@@ -49,13 +36,13 @@ class CartItem {
   }
 
   get discount() {
-    console.log("this.id ===> ",this.id, "this.quantity ===> ",this.quantity);
+    let discountAmount = 0;
     if (this.id === 'A' && this.quantity >= 3) {
-      return (this.quantity / 3) * (this.price - 75);
+      discountAmount = Math.floor(this.quantity / 3) * 15;
     } else if (this.id === 'B' && this.quantity >= 2) {
-      return (this.quantity / 2) * (this.price - 35);
+      discountAmount = Math.floor(this.quantity / 2) * 5;
     }
-    return 0;
+    return discountAmount;
   }
 }
 
@@ -66,34 +53,36 @@ class Cart {
 
   add(item) {
     this.items.push(item);
-    console.log("this.items ===> ",this.items);
   }
-
-  calculateTotal() {
-    let total = 0;
-    let totalDiscount = 0;
-console.log("this.itemsssss ====> ",this.items);
-    for (const item of this.items) {
-      total += item.individualPrice;
-      totalDiscount += item.discount;
+  calculateTotal(a,b,c,d){
+    console.log("A ",a, "B ",b,"C ",c, "D ",d);
+    let aDisc=0, bDisc=0,totalDisc=0;
+    let total=(a*30+b*20+c*50+d*15)
+    if(a>=3){
+        aDisc=Math.floor(a/3)*15
     }
-
-    if (total > 150) {
-      totalDiscount += 20;
+    if(b>=2){
+    bDisc=Math.floor(b/2)*5
     }
-
-    return { total, totalDiscount };
+    total=total -aDisc-bDisc
+    totalDisc=aDisc+bDisc
+    if(total>150){
+        totalDisc+=20
+        total=total-20
+    }
+    return {aDisc,bDisc,totalDisc,total}
+    
   }
 }
+
+
 
 const cart = new Cart();
 
 app.post('/add-to-cart', async (req, res) => {
   try {
-    console.log("req.body ===> ",req.body);
     const { item_id, quantity } = req.body;
     const product = await Product.find(item_id);
-console.log("product ===> ",product);
     if (!product) {
       return res.status(404).json({ error: 'Product not found' });
     }
@@ -110,16 +99,47 @@ console.log("product ===> ",product);
 
 app.get('/view-cart', (req, res) => {
   try {
-    const { total, totalDiscount } = cart.calculateTotal();
+    let duplicate = {};
+    for (let element of cart.items) {
+      let currentItem = element;
+      let itemId = currentItem.id;
+      if (duplicate.hasOwnProperty(itemId)) {
+        duplicate[itemId]++;
+      } else {
+        duplicate[itemId] = 1;
+      }
+    }
+
+let keys = ['A', 'B', 'C', 'D'];
+let result = {};
+keys.forEach(key => {
+  result[key] = duplicate.hasOwnProperty(key) ? duplicate[key] : 0;
+});
+
+let finalResult = cart.calculateTotal(result.A, result.B, result.C, result.D);
+let totalPriceAndQuantity = {};
+cart.items.forEach(item => {
+  if (!totalPriceAndQuantity[item.id]) {
+    totalPriceAndQuantity[item.id] = {
+      id: item.id,
+      name: item.name,
+      price: 0,
+      quantity: 0
+    };
+  }
+
+  totalPriceAndQuantity[item.id].price += item.price;
+  totalPriceAndQuantity[item.id].quantity += item.quantity;
+});
+
+let finalObj = Object.values(totalPriceAndQuantity);
     res.json({
-      cart: cart.items.map(item => ({
-        ...item,
-        individualPrice: item.individualPrice,
-        discount: item.discount,
-      })),
-      totalPrice: total,
-      totalDiscount,
+      cart: finalObj,
+      totalPrice: finalResult.total,
+      totalDiscount: finalResult.totalDisc,
     });
+
+
   } catch (error) {
     console.error('Error viewing cart:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -128,11 +148,7 @@ app.get('/view-cart', (req, res) => {
 
 app.get('/products', async (req, res) => {
   try {
-    // const [rows] = await db.query('SELECT * FROM products');
-    let rows= [{id : 'A', name :'Product A', price: 30},
-    {id : 'B', name :'Product B', price: 20},
-    {id : 'C', name :'Product C', price: 50},
-    {id : 'D', name :'Product D', price: 15}]
+    let rows = await db.query('SELECT * FROM products');
     res.json({ products: rows });
   } catch (error) {
     console.error('Error fetching products:', error);
